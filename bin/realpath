@@ -1,0 +1,33 @@
+17. bin/realpath
+
+程序名
+realpath
+
+说明
+显示相对路径的绝对路径
+
+
+[所有|部分用法]
+root@bruceunix-host:/usr/src/bin # realpath ed dd expr
+/usr/src/bin/ed
+/usr/src/bin/dd
+/usr/src/bin/expr
+root@bruceunix-host:/usr/src/bin # realpath -q adsf
+root@bruceunix-host:/usr/src/bin # realpath adsf
+realpath: adsf: No such file or directory
+
+
+查询帮助
+man realpath
+man 3 realpath
+
+
+源码解析
+author
+file/lines
+
+详细
+有-p选项，不输出错误信息，一般输出。调用realpath来得到绝对路径信息
+
+
+
