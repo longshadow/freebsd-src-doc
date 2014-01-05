@@ -1,0 +1,64 @@
+
+19 bin/kenv.c
+
+程序名
+kenv
+
+说明
+显示或者设置内核环境变量
+
+[所有|部分用法]
+kenv 
+kenv -h
+kenv -N
+
+root@bruceunix-host:/root # kenv -q hello
+rose
+root@bruceunix-host:/root # kenv hello="jack"
+hello="jack"
+root@bruceunix-host:/root #
+root@bruceunix-host:/root # kenv | grep hello
+hello="jack"
+root@bruceunix-host:/root # kenv -u hello
+root@bruceunix-host:/root # kenv | grep hello
+
+root@bruceunix-host:/root # kenv hello="jack"
+hello="jack"
+root@bruceunix-host:/root # kenv hello
+jack
+
+查询帮助
+man kenv
+man 2 kenv
+
+
+源码解析
+author: __FBSDID("$FreeBSD: release/9.1.0/bin/kenv/kenv.c 236118 2012-05-26 20:13:24Z mdf $");
+file/lines
+     kenv.c 206
+
+详细
+main:
+     首先，解析各个flag, 如果没有env, 调用kdumpenv, 来显示所有的环境变量
+     如果有uflag, 就调用kunsetenv, 来删除一个内核环境变量,否则，得到环境变量的值
+    if (env == NULL) {
+        error = kdumpenv(); /*显示内核环境变量*/
+        if (error && !qflag)
+            warn("kdumpenv");
+    } else if (val == NULL) {
+        if (uflag) {
+            error = kunsetenv(env); /*删除内核环境变量*/
+            if (error && !qflag)
+                warnx("unable to unset %s", env);
+        } else {
+            error = kgetenv(env); /* 得到当前变量名的值*/
+            if (error && !qflag)
+                warnx("unable to get %s", env);
+        }
+    } else {
+        error = ksetenv(env, val); /* 设置环境变量的值 */
+        if (error && !qflag)
+            warnx("unable to set %s to %s", env, val);
+    }
+
+
