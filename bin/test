@@ -1,0 +1,88 @@
+12 bin/test
+
+程序名
+test
+
+说明
+test 它是一个判断条件的工具集，主要包括以下几类判断：
+1. 文件判断，是否存在，普通文件？目录？字符设备？块设备？？？
+2. 字符串判断, 是否存在，相等？大于？小于？？？
+3. 数字判断, 大于？小于？等于？？？
+
+写shell脚本的会经常使用这个程序，如：
+if  [ -e "$filename" ]
+then
+     rm $filename
+fi
+上面的 [] 就是test的一种表现方式，当然也可以用test命令
+
+[所有|部分用法]
+-e, -c , -b ...
+
+查询帮助
+man test
+man [
+
+
+源码解析
+author:  Erik Baalbergen
+file/lines
+          test.c 603
+
+详细
+用法
+
+/*  FIL*: 文件,  STR*: 字符串,    INT*: 数字  */
+struct t_op {
+    const char *op_text;
+    short op_num, op_type;
+} const ops [] = {
+    {"-r",  FILRD,  UNOP},
+    {"-w",  FILWR,  UNOP},
+    {"-x",  FILEX,  UNOP},
+    {"-e",  FILEXIST,UNOP},
+    {"-f",  FILREG, UNOP},
+    {"-d",  FILDIR, UNOP},
+    {"-c",  FILCDEV,UNOP},
+    {"-b",  FILBDEV,UNOP},
+    {"-p",  FILFIFO,UNOP},
+    {"-u",  FILSUID,UNOP},
+    {"-g",  FILSGID,UNOP},
+    {"-k",  FILSTCK,UNOP},
+    {"-s",  FILGZ,  UNOP},
+    {"-t",  FILTT,  UNOP},
+    {"-z",  STREZ,  UNOP},
+    {"-n",  STRNZ,  UNOP},
+    {"-h",  FILSYM, UNOP},      /* for backwards compat */
+    {"-O",  FILUID, UNOP},
+    {"-G",  FILGID, UNOP},
+    {"-L",  FILSYM, UNOP},
+    {"-S",  FILSOCK,UNOP},
+    {"=",   STREQ,  BINOP},
+    {"==",  STREQ,  BINOP},
+    {"!=",  STRNE,  BINOP},
+    {"<",   STRLT,  BINOP},
+    {">",   STRGT,  BINOP},
+    {"-eq", INTEQ,  BINOP},
+    {"-ne", INTNE,  BINOP},
+    {"-ge", INTGE,  BINOP},
+    {"-gt", INTGT,  BINOP},
+    {"-le", INTLE,  BINOP},
+    {"-lt", INTLT,  BINOP},
+    {"-nt", FILNT,  BINOP},
+    {"-ot", FILOT,  BINOP},
+    {"-ef", FILEQ,  BINOP},
+    {"!",   UNOT,   BUNOP},
+    {"-a",  BAND,   BBINOP},
+    {"-o",  BOR,    BBINOP},
+    {"(",   LPAREN, PAREN},
+    {")",   RPAREN, PAREN},
+    {0, 0,  0}
+};
+
+流程描述
+
+
+核心代码解析
+
+
