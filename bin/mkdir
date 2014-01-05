@@ -1,0 +1,39 @@
+
+17. bin/mkdir
+
+ 
+程序名
+mkdir 
+
+说明
+创建目录
+
+所有用法
+root@bruceunix-host:/usr/src/bin/mkdir # mkdir -pv def/def   hello/abc
+def
+def/def
+hello
+hello/abc
+
+
+查询帮助
+man 2 mkdir 
+man mkdir 
+
+源码解析
+author: __FBSDID("$FreeBSD: release/9.1.0/bin/mkdir/mkdir.c 163213 2006-10-10 20:18:20Z ru $");
+file/lines:
+     mkdir.c   219
+
+详细
+main
+     参数解析，-p: pflag, -v: vflag
+     遍历argv,  -p 调用:build函数，循环创建目录，否则直接使用mkdir API创建目录
+
+build
+    遍历路径，如：def/def, hello/abc, 看是否遇到了'/'，没到继续，到了之后，把当'/'换成'/0', 然后调用mkdir函数一级一级往下创建目录，直到最后一个字符
+
+
+
+
+
