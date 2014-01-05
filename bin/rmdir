@@ -1,0 +1,102 @@
+
+15 bin/rmdir
+
+ 
+程序名
+rmdir
+
+说明
+删除目录
+
+所有用法
+root@bruceunix-host:/root # mkdir hello
+root@bruceunix-host:/root # rmdir hello
+
+root@bruceunix-host:/root # mkdir -p hello/jack/def
+root@bruceunix-host:/root # rmdir -p hello/jack/def
+
+root@bruceunix-host:/root # mkdir hello
+root@bruceunix-host:/root # rmdir -v hello
+hello
+
+root@bruceunix-host:/root # mkdir -p hello/jack/def
+root@bruceunix-host:/root # rmdir -v -p hello/jack/def
+hello/jack/def
+hello/jack
+hello
+
+
+
+
+查询帮助
+man rmdir
+man 2 rmdir
+
+源码解析
+author: __FBSDID("$FreeBSD: release/9.2.0/bin/rmdir/rmdir.c 140851 2005-01-26 06:51:28Z ssouhlal $");
+file/lines
+     rmdir.c 128
+
+详细
+用法
+static void
+usage(void)
+{
+
+    (void)fprintf(stderr, "usage: rmdir [-pv] directory ...\n");
+    exit(1);
+}
+
+流程描述
+rmdir有三种方式：A. 直接带上要删除的目录  B. p 标志，用来删除深入的子目录  C. v 标志，用来显示删除的过程
+
+核心代码解析
+/*  A方式，直接调用rmdir函数   B方式使用rm_path 函数来删除  C 方式会打印删除的路径，不过C方式感觉很是多余，打印的不够人性化有没有，至少打个suc, fail什么的  */
+    for (errors = 0; *argv; argv++) {
+        if (rmdir(*argv) < 0) {
+            warn("%s", *argv);
+            errors = 1;
+        } else {
+            if (vflag)
+                printf("%s\n", *argv);
+            if (pflag)
+                errors |= rm_path(*argv);
+        }
+    }
+
+/*  rm_path 删除一整条路径的目录,p 最开始指向目录的最后一个字符，然后遍历到第一个字符，遇到'/' 就删除path指向的字符串    */
+     static int
+rm_path(char *path)
+{
+    char *p;
+
+    p = path + strlen(path);
+    while (--p > path && *p == '/')
+        ;
+    *++p = '\0';
+    while ((p = strrchr(path, '/')) != NULL) {
+        /* Delete trailing slashes. */
+        while (--p >= path && *p == '/')
+            ;
+        *++p = '\0';
+        if (p == path)
+            break;
+
+        if (rmdir(path) < 0) {
+            warn("%s", path);
+            return (1);
+        }
+        if (vflag)
+            printf("%s\n", path);
+    }
+
+    return (0);
+}
+
+
+
+
+
+
+
+
