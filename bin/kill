@@ -1,0 +1,87 @@
+18 bin/kill.c
+程序名
+说明
+
+[所有|部分用法]
+kill -l 
+
+A. 名称 
+root@bruceunix-host:/root # ps aux | grep vim
+root       1725   0.0  0.1    364   284  0  R+    1:36AM  0:00.00 grep vim
+root       1705   0.0  3.2 145104 15916  2  I+    1:34AM  0:00.66 vim kill/kill.c
+root@bruceunix-host:/root # kill -s QUIT 1705
+
+B. 默认信号(15 SIGTERM)
+root@bruceunix-host:/root # ps aux | grep vim
+root       1731   0.0  0.1    364   284  0  R+    1:37AM  0:00.00 grep vim
+root       1726   0.0  3.2 145104 15904  2  S+    1:37AM  0:00.17 vim kill/kill.c
+root@bruceunix-host:/root # kill 1726
+
+C. 指定信号
+root@bruceunix-host:/root # ps aux | grep vim
+root       1737   0.0  0.1    364   284  0  R+    1:37AM  0:00.00 grep vim
+root       1732   0.0  3.2 145104 15904  2  S+    1:37AM  0:00.17 vim kill/kill.c
+root@bruceunix-host:/root # kill -9 1732
+root@bruceunix-host:/root # ps aux | grep vim
+root       1761   0.0  3.2 145104 15916  2  I+    1:39AM  0:01.19 vim kill.c
+root@bruceunix-host:/root # kill -QUIT 1761
+
+查询帮助
+man 2 kill
+man kill
+
+
+源码解析
+author:
+      __FBSDID("$FreeBSD: release/9.1.0/bin/kill/kill.c 219154 2011-03-01 21:48:22Z jilles $");
+file/lines
+     kill.c 209
+
+详细
+main
+     numsig = SIGTERM; /*默认信号*/
+
+接下来解析参数： -l , -s , 以及 - 后跟数字或者字符串
+使用-l 会调用printsignals输出信号列表
+使用-s会 将字符串的信号转换成数字形式的信号
+最有意思的是 - , 代码会判断它后面跟的是，字符串还是数字，字符串的话和-s处理一样， -之后就不用转了
+
+    if (!strcmp(*argv, "-s")) {
+        argc--, argv++;
+        if (argc < 1) {
+            warnx("option requires an argument -- s");
+            usage();
+        }
+          /* 将字符名称转成数字 */
+        if (strcmp(*argv, "0")) {
+            if ((numsig = signame_to_signum(*argv)) < 0)
+                nosig(*argv);
+        } else
+            numsig = 0;
+        argc--, argv++;
+    } else if (**argv == '-' && *(*argv + 1) != '-') {
+        ++*argv;
+        if (isalpha(**argv)) {
+            if ((numsig = signame_to_signum(*argv)) < 0)
+                nosig(*argv);
+        } else if (isdigit(**argv)) {
+            numsig = strtol(*argv, &ep, 10);
+            if (!**argv || *ep)
+                errx(2, "illegal signal number: %s", *argv);
+            if (numsig < 0)
+                nosig(*argv);
+        } else
+            nosig(*argv);
+        argc--, argv++;
+    }
+
+最后调用kill函数向进程发送特定的信号
+       if (kill(pid, numsig) == -1) {
+
+
+
+
+
+
+
+
