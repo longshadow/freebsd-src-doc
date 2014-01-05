@@ -1,0 +1,38 @@
+22. bin/domainname
+
+程序名
+domainname
+
+说明
+设置 或 得到域名
+
+[所有|部分用法]
+root@bruceunix-host:/root # domainname jack@net.com.cn
+root@bruceunix-host:/root # domainname
+jack@net.com.cn
+
+查询帮助
+man domainname
+man getdomainname
+man setdomainname
+
+源码解析
+author: __FBSDID("$FreeBSD: release/9.1.0/bin/domainname/domainname.c 139969 2005-01-10 08:39:26Z imp $");
+file/lines
+     domain.c 89
+
+详细
+main
+   代码简单直接， 如果有参数，就设置它为域名，如果没有，就得到域名
+   if (*argv) {
+        if (setdomainname(*argv, (int)strlen(*argv)))
+            err(1, "setdomainname");
+    } else {
+        if (getdomainname(domainname, (int)sizeof(domainname)))
+            err(1, "getdomainname");
+        (void)printf("%s\n", domainname);
+    }
+
+
+
+
