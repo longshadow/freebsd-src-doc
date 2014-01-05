@@ -1,0 +1,53 @@
+
+20 bin/hostname
+
+程序名
+hostname
+
+说明
+查询或者设置主机名
+
+[所有|部分用法]
+root@bruceunix-host:/root # hostname hello.def.efg
+root@bruceunix-host:/root # hostname -f
+hello.def.efg
+root@bruceunix-host:/root # hostname
+hello.def.efg
+root@bruceunix-host:/root # hostname -s
+hello
+
+查询帮助
+man hostname
+man sethostname
+man gethostname
+
+源码解析
+author: __FBSDID("$FreeBSD: release/9.1.0/bin/hostname/hostname.c 194795 2009-06-23 23:30:56Z delphij $");
+file/lines:
+     hostname.c 105
+
+详细
+ main
+     首先进行参数解析: -f, -s，BSD的hostname = hostname -f. 
+     -f 可以设置或者得到主机名，而-s只能得到主机名
+
+    /*  如果有主机名，就设置主机名，如果没有就显示当前主机名*/    
+    if (*argv) {
+        if (sethostname(*argv, (int)strlen(*argv)))
+            err(1, "sethostname");
+    } else {
+        if (gethostname(hostname, (int)sizeof(hostname)))
+            err(1, "gethostname");
+        /*  -s 如果被设置，sflag=1 */ 
+        if (sflag) {
+            p = strchr(hostname, '.');
+            if (p != NULL)
+                *p = '\0';
+        }
+        (void)printf("%s\n", hostname);
+    }
+
+
+
+
+
