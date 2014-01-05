@@ -1,0 +1,22 @@
+18. bin/pwd
+
+程序名
+pwd
+
+说明
+显示当前的工作目录
+
+
+[所有|部分用法]
+pwd 
+pwd -P 
+pwd -L
+
+源码解析
+author
+file/lines
+
+详细
+查询PWD环境变量和调用stat函数来显示当前的工作目录
+
+
