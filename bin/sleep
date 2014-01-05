@@ -1,0 +1,110 @@
+14 bin/sleep
+
+程序名
+sleep
+
+说明
+让正在执行的进程，挂起一段时间，单位：秒
+
+所有用法
+sleep 3
+sleep 1.9555
+
+
+查询帮助
+man sleep
+man 2 nanosleep
+
+
+源码解析
+author: The Regents of the University of California.
+file/lines
+     sleep.c 109
+
+详细
+用法
+static void
+usage(void)
+{
+
+    fprintf(stderr, "usage: sleep seconds\n");
+    exit(1);
+}
+
+流程描述
+
+核心代码解析
+/*  参数解析，只能有一个浮点型数字不能带上别的参数，这就意味着，sleep可能会支持毫秒，微秒，纳秒 */
+    if (sscanf(argv[1], "%lf%1s", &d, buf) != 1)
+
+/* 分开秒和纳秒值域   [0,999999999]*/
+    original = time_to_sleep.tv_sec = (time_t)d;
+    time_to_sleep.tv_nsec = 1e9 * (d - time_to_sleep.tv_sec);
+
+/* handle住SIGINFO信号 */
+    signal(SIGINFO, report_request);
+
+/* 注：nanosleep这个函数，是以纳秒来计算的，CPU不一定支持得了，因为这个精度太高 */
+/*  调用nanosleep来进行睡眠, 这个程序接受两个信号，一个INFO用来显示还有多少秒会结束睡眠，另一个来结束睡眠  */
+    while (nanosleep(&time_to_sleep, &time_to_sleep) != 0) {
+        if (report_requested) {
+            /* Reporting does not bother with nanoseconds. */
+            warnx("about %d second(s) left out of the original %d",
+                (int)time_to_sleep.tv_sec, (int)original);
+            report_requested = 0;
+        } else if (errno != EINTR)
+            err(1, "nanosleep");
+    }
+
+
+
+测试：
+测试1： 向sleep发送INFO信号，来得知还有多少秒会结束睡眠
+Terminal A:
+root@bruceunix-host:/root # sleep 50
+sleep: about 34 second(s) left out of the original 50
+sleep: about 14 second(s) left out of the original 50
+sleep: about 9 second(s) left out of the original 50
+sleep: about 2 second(s) left out of the original 50
+
+Terminal B:
+root@bruceunix-host:/root #  man signal | grep SIGINFO
+     29    SIGINFO      discard signal       status request from keyboard
+root@bruceunix-host:/root # ps aux | grep sleep
+root       2389   0.0  0.3   3776  1260  1  S+    1:21PM   0:00.00 sleep 50
+root@bruceunix-host:/root # kill -29 2389
+root@bruceunix-host:/root # kill -29 2389
+root@bruceunix-host:/root # kill -29 2389
+root@bruceunix-host:/root # kill -29 2389
+
+
+测试2： 向sleep发送终止信号
+Terminal A:
+root@bruceunix-host:/root # sleep 50
+Terminated
+
+/*  这里也可以直接 Ctrl+C 来结束 */
+Terminal B:
+root@bruceunix-host:/root # ps aux | grep sleep
+root       2418   0.0  0.3   3776  1260  1  S+    1:24PM   0:00.00 sleep 50
+root       2420   0.0  0.3  16280  1636  2  S+    1:24PM   0:00.00 grep sleep
+root@bruceunix-host:/root # kill 2418
+
+番外篇：
+A.     各种CPU nanosleep的支持程度
+Intel:
+ARM:
+MIPS:
+
+B. double的有效位
+ 很久之前的 Turbo c 印象是只支持小数之后的6,7位,理论支持16位
+ GCC 加入__float128类型，是支持小数之后的30位
+http://blog.csdn.net/liyuanbhu/article/details/7935321
+
+番外篇太扯到硬件，希望硬件能支持这些BT的软件类型
+
+
+
+
+
+
