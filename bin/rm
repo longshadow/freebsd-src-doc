@@ -1,0 +1,38 @@
+16 bin/rm
+
+程序名
+rm
+
+说明
+rm用来删除文件或者目录
+
+[所有|部分用法]
+查询帮助
+
+源码解析
+author:
+     __FBSDID("$FreeBSD: release/9.1.0/bin/rm/rm.c 237615 2012-06-27 00:31:30Z delphij $");
+file/lines
+     rm.c 636
+
+详细
+用法
+static void
+usage(void)
+{
+
+    (void)fprintf(stderr, "%s\n%s\n",
+        "usage: rm [-f | -i] [-dIPRrvW] file ...",
+        "       unlink file");
+    exit(EX_USAGE);
+}
+
+流程描述
+rm首先对各个参数进行解析，之后根据相应的Flag调用相应的函数，如：Iflag: check2, rflag:rm_tree ,没flag rm_file
+
+核心代码解析
+
+rm_file 
+ 会根据类型调用: IS_WHITE: undelete, IS_DIR: rmdir, regular file: unlink
+
+
