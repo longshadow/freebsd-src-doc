@@ -1,0 +1,194 @@
+
+23 bin/cat
+
+ 
+程序名
+cat
+
+说明
+将文件内容输出，包括unix域socket
+
+[所有|部分用法]
+
+/* n: 打印所有行行号，包括非空行  s: 将相邻的空行压缩成一行*/
+/*b： 不打印空行行号， e: 在文件结尾打印$, t: 将'\t' 输出成^I, v: 非打印字符输出成：M-, Ctrl字符输出成^? */
+/* 有的vim被配置过，Tab可能会变成4个或者8个空格，这个时候，用vi才能输入原生的Tab字符  */
+
+root@bruceunix-host:/root # cat -n abc
+     1      1712f6d1-6f6d-11e3-838c-000c291efd6b
+     2  1712f6d3-6f6d-11e3-838c-000c291efd6b
+     3
+     4
+     5          1712f6d2-6f6d-11e3-838c-000c291efd6b
+     6      ¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?
+     7
+     8
+     9
+    10      p
+    11      1712f6d2-6f6d-11e3-838c-000c291efd6b
+    12
+    13
+    14
+    15
+    16
+    17
+root@bruceunix-host:/root # cat -bsetv abc
+     1      1712f6d1-6f6d-11e3-838c-000c291efd6b$
+     2  1712f6d3-6f6d-11e3-838c-000c291efd6b$
+$
+     3  ^I1712f6d2-6f6d-11e3-838c-000c291efd6b$
+     4      M-BM-??M-BM-??M-BM-??M-BM-??M-BM-??M-BM-??M-BM-??M-BM-??M-BM-??M-BM-??$
+$
+     5      p   $
+     6      1712f6d2-6f6d-11e3-838c-000c291efd6b$
+$
+root@bruceunix-host:/root #
+
+/* unix域socket */
+root@bruceunix-host:/root # cat /var/run/logpriv
+cat: /var/run/logpriv: Protocol wrong type for socket
+root@bruceunix-host:/root # cat /var/run/devd.pipe
+asdf
+asdfas
+adsfda
+^C
+root@bruceunix-host:/root #
+
+
+
+
+
+查询帮助
+man cat
+
+源码解析
+author: __FBSDID("$FreeBSD: release/9.1.0/bin/cat/cat.c 184471 2008-10-30 14:05:57Z ivoras $");
+file/lines
+     cat.c  333
+
+详细
+main():
+     首先会解析参数，将值放到各个全局的flag中:
+          int bflag, eflag, nflag, sflag, tflag, vflag;
+                    while ((ch = getopt(argc, argv, "benstuv")) != -1)
+        switch (ch) {
+        case 'b':
+            bflag = nflag = 1;  /* -b implies -n */
+            break;
+        case 'e':
+            eflag = vflag = 1;  /* -e implies -v */
+            break;
+        case 'n':
+            nflag = 1;
+            break;
+        case 's':
+            sflag = 1;
+            break;
+        case 't':
+            tflag = vflag = 1;  /* -t implies -v */
+            break;
+        case 'u':
+            setbuf(stdout, NULL);
+            break;
+        case 'v':
+            vflag = 1;
+            break;
+        default:
+            usage();
+        }
+
+
+   如果flag设置值，调用scanfiles,将第二个参数设为1， 否则设为0
+    if (bflag || eflag || nflag || sflag || tflag || vflag)
+        scanfiles(argv, 1);
+    else
+        scanfiles(argv, 0);
+
+scanfiles(char *argv[], int cooked)：
+     如果argv只有一个， 只输入了cat命令，不输出路径，那么把标准输入当成输入文件符
+     否则，打开文件（包括Unix域socket的路径）.
+     不带参数使用raw_cat， 有参数，调用cook_cat
+
+raw_cat(int rfd):
+     设置输出fd: stdout, 从rfd里将数据读出来，然后依次写入到标准输出，直到rfd里读不到数据
+
+cook_cat(FILE *fp):
+     这个函数最有意思了，它把所有flags都输出遍了：
+      首先，有个大for循环，从文件里一个字符一个字符将它读出来，打印到屏幕上，
+     当遇到各种特殊字符的时候，会有特殊处理，如下：
+
+       /*将相邻的几个空行压缩成一行，sflag*/
+        if (sflag) {
+                if (ch == '\n') {  
+                    if (gobble)
+                        continue;
+                    gobble = 1;
+                } else
+                    gobble = 0;
+            }
+            if (nflag && (!bflag || ch != '\n')) {  /* 如果nflag有值，并且bflag没有值，就会输出行号，如果blfag有值，而且当前字符不是换行符号的时候，就输出，换而言之，空行在bflag有的值的时候不输出行号 */
+                (void)fprintf(stdout, "%6d\t", ++line);
+                if (ferror(stdout))
+                    break;
+            }
+        }
+        /* eflag: 末尾输出 $ */
+        if (ch == '\n') {
+            if (eflag && putchar('$') == EOF)
+                break;
+        } else if (ch == '\t') {  /* tflag: 将Tab键，转换成^I*/
+            if (tflag) {
+                if (putchar('^') == EOF || putchar('I') == EOF)
+                    break;
+                continue;
+            }
+        } else if (vflag) { 
+            if (!isascii(ch) && !isprint(ch)) { /*vflag: 不可打印字符，输出成 M- */
+                if (putchar('M') == EOF || putchar('-') == EOF)
+                    break;
+                ch = toascii(ch);
+            }
+            if (iscntrl(ch)) {
+                if (putchar('^') == EOF ||
+                    putchar(ch == '\177' ? '?' :
+                    ch | 0100) == EOF)  /* 控制字符输出成：^? */
+                    break;
+                continue;
+            }
+               ......
+     }     
+
+
+udom_open(const char *path, int flags):
+     打开以path为路径的unix域socket, 只读，只写的这种socket会被关闭，只有可读可写的socket才会一直打开
+
+    fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd >= 0) {
+        sou.sun_family = AF_UNIX;
+        if ((len = strlcpy(sou.sun_path, path,
+            sizeof(sou.sun_path))) >= sizeof(sou.sun_path)) {
+            errno = ENAMETOOLONG;
+            return (-1);
+        }
+        len = offsetof(struct sockaddr_un, sun_path[len+1]);
+
+        if (connect(fd, (void *)&sou, len) < 0) {
+            close(fd);
+            fd = -1;
+        }
+    }
+    if (fd >= 0) {
+        switch(flags & O_ACCMODE) {
+        case O_RDONLY:
+            if (shutdown(fd, SHUT_WR) == -1)
+                warn(NULL);
+            break;
+        case O_WRONLY:
+            if (shutdown(fd, SHUT_RD) == -1)
+                warn(NULL);
+     ......
+
+总结：
+     cat 命令写得很精简，这么多选项，用了300行代码，而且，里面判断起来有点复杂,花了我一个半小时才弄明白各个细节，不容易呀，别的200行代码，一般只要10分钟就好了
+
+
