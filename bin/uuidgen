@@ -1,0 +1,63 @@
+11 bin/uuidgen
+
+说明：uuidgen用来生成一个唯一的ID
+
+所有用法：
+root@bruceunix-host:/root # uuidgen -1   
+10b46dde-6f6d-11e3-838c-000c291efd6b
+root@bruceunix-host:/root # uuidgen -o abc
+root@bruceunix-host:/root # uuidgen -n 3 -o abc
+root@bruceunix-host:/root # cat abc
+1712f6d1-6f6d-11e3-838c-000c291efd6b
+1712f6d2-6f6d-11e3-838c-000c291efd6b
+1712f6d3-6f6d-11e3-838c-000c291efd6b
+root@bruceunix-host:/root #
+
+查询帮助：
+man uuidgen
+man 2 uuidgen
+
+源码解析
+author: Copyright (c) 2002 Marcel Moolenaar
+可以看出，这程序2002年就写好了，到现在，基本没怎么改，说明它的寿命还是不错的
+files/lines: 
+uuidgen.c 113
+
+详细：
+    用法：
+static void
+usage(void)
+{
+    (void)fprintf(stderr, "usage: uuidgen [-1] [-n count] [-o filename]\n");
+    exit(1);
+}
+
+流程描述：
+uuidgen程序首先parse了三种类型的参数，然后根据count调用uuidgen函数来生成唯一的ID, 最后将其转成字符串
+核心代码：
+
+核心代码解析：
+/* 这里其实可以用一个do while整合一下，可能更简洁 */
+/* 调用uuidgen 函数来生成唯一的ID */
+    if (!iterate) {
+        /* Get them all in a single batch */
+        if (uuidgen(store, count) != 0)
+            err(1, "uuidgen()");
+    } else {
+        uuid = store;
+        for (i = 0; i < count; i++) {
+            if (uuidgen(uuid++, 1) != 0)
+                err(1, "uuidgen()");
+        }
+    }
+
+/*  将唯一的uuid转换成字符串，输出到文件描述符 */
+    uuid = store;
+    while (count--) {
+        uuid_to_string(uuid++, &p, NULL);
+        fprintf(fp, "%s\n", p);
+        free(p);
+    }
+
+
+
