@@ -1,0 +1,35 @@
+13 bin/sync
+
+程序名
+sync
+
+说明
+同步没有写入的数据到磁盘
+
+所有用法
+sync
+
+查询帮助
+man sync
+
+源码解析
+author: The Regents of the University of California.
+file/lines
+sync.c 52
+
+详细
+/*  这个程序的所有代码，只调用了一下sync, 真是好精简 */
+int
+main(int argc __unused, char *argv[] __unused)
+{
+    sync();
+    exit(0);
+}
+
+
+
+
+
+
+
+
