@@ -1,0 +1,312 @@
+
+26 bin/sh
+2014/1/10 21:00 开始
+
+
+问题：
+0. sh的运行框架
+词法分析，语法分析，语义分析，控制作业
+
+1. ls的执行路径?
+2. a.sh的执行路径?
+#!/bin/sh
+ls
+
+3. 一个有几百行shell脚本是如何执行的？
+
+
+
+shell文章
+http://www.oldlinux.org/oldlinux/viewthread.php?tid=14695&extra=page%3D1
+http://www.ituring.com.cn/article/6220
+
+
+sh的广泛应用，可以说，它存在，每个类Unix系统中
+freebsd 有 sh, csh
+linux 有sh , bash
+嵌入式的busybox,也有sh.
+基本上只要是看到脚本#!/bin/sh 打头的都是今天要分析的sh(bourne shell)
+
+
+
+main:
+cmdloop: 会调用 for(;;)来执行每一条命令
+parsecmd:
+          readtoeken /*返回：TFOR., TWORD..*/
+              xxreadtoken
+                    readtoken1
+                         跟着几种字符的判断
+     parsedoc
+          readtoeken1
+list
+andor
+pipleline, simplecmd:
+     command:
+          TIF, TFOR, TWHILE,....解析相关的语句
+           simplecommand
+
+          
+evaltree
+evalcommand
+shellexec
+tryexec
+     execve 
+          执行具体的shell命令
+
+asdfasdf
+别的函数，基本上就是酱油党
+重要函数：
+readtoken:
+        if (checkkwd & CHKKWD)
+            for (pp = parsekwd; *pp; pp++) {
+                if (**pp == *wordtext && equal(*pp, wordtext))
+                {
+                    lasttoken = t = pp - parsekwd + KWDOFFSET;    /*这里会生成TIF, TFOR....*/
+                    TRACE(("keyword %s recognized\n", tokname[t]));
+                    goto out;
+                }
+            }
+
+
+
+
+
+
+2104/1/10 23:13  问题0, 基本运行框架看完,它可以分成两大部分，一部分为parse解析语法，另一部分为执行命令。
+第一部分实现了一个解析器，用来解析Shell中的各种关键字，变量名，特殊字符，普通单词。第二部分用来执行各种命令。
+
+看的过程， 开始，一直关注parse怎么也找不到命令执行，果然，看这样的代码，只看一段是不行的，要结合自己的想法，去找，可能的结果，果然，猜了好几次，然后，找到了，运行的函数。如果早猜，和快快的翻阅，可能会节省一半的时间，只用一个小时就可以了。但现在发了接近两个小时左右。
+
+
+2014/1/11 15:10开始
+决定先看第二个流程，熟悉一些
+eval.c: 衡量一个命令是什么样的形式，然后会调用相关的exec函数与job控制的东东
+exec.c : 在执行各种命令
+job: 作业控制
+expand: 命令展开
+
+看代码经验总结：
+     1000行以下的代码，可以从开始看到结尾，而像Shell这种有一万行左右的代码，直接看到结尾，很多东西可能还是不会很明白，所以正确的看法是开始是看个从开头到结尾的框架，之后再根据每个模块看下，而一万左右的源码，基本上一个源文件就是一个模块了。
+
+模块1 yacc
+arith_yylex.c:  
+     整个文件只有一个yylex函数，它把字符转成一个value,而value有很多种值，比如：NUM，VAR, ADD...
+
+arith_yacc.c:
+     static arith_t do_binop(int op, arith_t a, arith_t b)
+          这个函数根据op不同，对a和b做不同的操作。如: op = ARITH_MUL, return a *b;
+          当然还有很多别的操作:ADD, SUB.
+          值得注意的是下面几个操作：
+             case ARITH_LSHIFT:
+        return a << b;
+    case ARITH_RSHIFT:
+        return a >> b;
+               这是位运算，之前一直认为Shell做不了这么高级的运算，看来是可以的
+     别的函数，暂时还不太了解
+
+arith_yylex.c 和 arith_yacc.c 的唯一出口就是arith函数，而这个函数，只有expand.c 有在用
+而expandarg只有在第二个流程有用，所以可以肯定的是，yacc模块是在第二阶段，才开始起作用的
+
+
+模块2 别名模块
+alias.c: 
+     它生成两个命令：alias, unalias,以及导出一个公共函数：lookupalias
+
+
+模块3 buildin命令
+builtin.c
+     用struct builtincmd  而存储了所有的builtin命令，结构如下：
+struct builtincmd {
+      const char *name;
+      int code;
+      int special;
+};
+     存储起来的内部命令集：
+          const struct builtincmd builtincmd[] = {
+    { "builtin", 0, 0 },
+    { "alias", 1, 0 },
+    { "bg", 2, 0 },
+    { "bind", 3, 0 },
+    { "break", 4, 1 },
+     ...........
+
+  builtin.sh 
+          这里建立了这些cmd函数与命令的对应关系
+  miscbltin.c
+          这里有readcmd, umaskcmd, ulimitcmd的实现
+
+模块4 cd
+     cd.c      
+           呈现cdcmd, pwdcmd.如模块3所示，这些是内部命令集的实现
+
+模块5 错误处理
+     error.c
+          这个模块主要提供一个error函数，供各个模块来进行自己的错误处理输出
+
+模块6 命令评估
+     eval.c
+ 
+模块7 命令执行
+      exec.c
+
+模块8 命令展开
+        expand.c
+
+模块9 历史命令编辑
+          histedit.c
+ 
+模块10 作业控制
+          jobs.c
+
+模块11 内存管理
+          memalloc.c
+                   实现了一些内存的分配 释放 的函数
+模块12 语法解析
+          parser.c
+
+模块很多。。
+到这个时候，也许这样已经不能满足需求了，因为模块太多，再分模块也对理解无济于是，需要run起来，看系统是如何使用各个模块的
+shell.h 
+#define DEBUG 2
+开始调试模式 
+
+
+调试1
+终端1：
+root@phoenix_zhang_bak:/usr/src/bin/sh # rm trace
+终端2：
+root@phoenix_zhang_bak:/usr/src/bin/sh # vim trace
+  1
+  2 Tracing started.
+  3 Shell args:  "./sh"
+  4 cmdloop(1) called
+  5 showjobs(1) called
+从调试结果来看，cmdloop, 是我们看的，showjobs没怎么看到？根据这个去找找源码
+showjobs在cmdloop内部调用的
+
+
+
+调试2 
+root@phoenix_zhang_bak:/usr/src/bin/sh # ./sh
+# exit
+
+root@phoenix_zhang_bak:/usr/src/bin/sh # vim trace
+  1
+  2 Tracing started.
+  3 Shell args:  "./sh"
+  4 cmdloop(1) called
+  5 showjobs(1) called
+  6 token word exit
+  7 pipeline: entered
+  8 reread token word exit
+  9 reread token word exit
+10 reread token word exit
+11 reread token word exit
+12 token newline
+13 reread token newline
+14 reread token newline
+15 reread token newline
+16 evaltree(0x8015a9230: 1) called
+17 evalcommand(0x8015a9230, 0) called
+18 evalcommand arg: exit
+19 builtin command:  "exit"
+
+从调试结果来看，先执行cmdloop,后来执行evaltree 和我们得到的框架也是一致的，验证了之前的方法是对的。
+另外，exit过程会调evalcommand, 并且会认为是个内部命令
+
+调试3 
+终端1
+root@phoenix_zhang_bak:/usr/src/bin/sh # ./sh
+# ls
+终端2
+vim trace
+  1
+  2 Tracing started.
+  3 Shell args:  "./sh"
+  4 cmdloop(1) called
+  5 showjobs(1) called
+  6 token word ls
+  7 pipeline: entered
+  8 reread token word ls
+  9 reread token word ls
+10 reread token word ls
+11 reread token word ls
+12 token newline
+13 reread token newline
+14 reread token newline
+15 reread token newline
+16 evaltree(0x8015a9230: 1) called
+17 evalcommand(0x8015a9230, 0) called
+18 evalcommand arg: ls
+19 searchexec "ls" returns "/bin/ls"
+20 makejob(0x8015a9230, 1) returns %1
+21 forkshell(%0, 0x8015a9230, 0) called
+22 In parent shell:  child = 3284
+23 waitforjob(%1) called
+24 dowait(1) called
+25 Child shell 3284
+26 normal command:  "ls"
+27 wait returns 3284, status=0
+28 Changing status of proc 3284 from 0xffffffff to 0x0
+29 Job 1: changing state from 0 to 2
+30 showjobs(1) called
+31 dowait(0) called
+32 wait returns -1, status=0
+
+
+OK 相信上面的3段调试信息，在源码里，跟踪一遍，代码，已经会理解60-70%吧
+刚刚拿sh的代码，与项目的代码做了个比较，发现shell的代码，复杂的结构太多，软件工程学的函数命令规则，用得不是太好，
+
+
+
+
+
+接下来重点，分而治之。
+A. cmd
+B. parse and exec
+
+
+EVAL:
+evalcmd
+     evalstring
+          parsecmd
+               
+parsecmd将会展开命令并且，将它变成结构化的数据
+
+          evaltree
+evaltree(union node *n, int flags) 
+evaltree会根据不同的节点类型，来进行不同的操作,从这里整个语法句式被分道
+
+
+
+
+execcmd
+     shellexec
+              tryexec
+                    execve(_PATH_BSHELL, argv, envp);
+
+
+execcmd 调用了最核心的执行函数
+而eval函数，则进行了更高级的语法解析, 相当于整个Shell的核心
+
+总结一段：
+parsecmd 会将if, for, ls...所有的输入字符串转换成TIF, TFOR, TWORD ..类型，之后再转换成NIF, NFOR...NCMD并且每个类型，会有自己的数据结构列表
+
+而evaltree会读NIF,NFOR.NCMD.相关结构中的数据,举个列子：
+        case NCMD:
+            evalcommand(n, flags, (struct backcmd *)NULL);
+            do_etest = !(flags & EV_TESTED);
+            break;
+
+当命令为NCMD时，调用evalcommand.而在这个函数中，将会调用shellexec.
+别的N* 命令，会调用不同的处理过程。
+
+从中可以学习到如下一些东东：
+1. 输入的字符串先通过readtoken转换成TIF，TFOR，TWORD这种数字形式，以便使用
+2. 但输入的字符串有的时候可能会很复杂，需要进一步转换，只表征数字是不够的，这个时候需要，把这些数字当成类型，为这些类型，准备一些数据结构来存储输入的结构信息。 Shell的做法是将TIF，TFOR，TWORD转成NIF，NFOR，NCMD，而它们每个类型都有自己的结构
+3. 如果Shell不用解释执行，语言可能到这个地方就可以了
+4. Shell需要现场运行，所以还要evaltree, 来评估每条N*命令做什么的执行
+
+
+
+
